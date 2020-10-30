@@ -3,9 +3,7 @@ import {ipcRenderer} from "electron";
 
 let settings: Settings;
 ipcRenderer.on('settings', (event, data) => {
-    console.log(data);
     settings = data;
-
     if (settings) {
         if(settings.username) {
             // @ts-ignore

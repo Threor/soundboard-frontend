@@ -31,8 +31,8 @@ function main() {
         if (!addWindow) {
             addWindow = new CustomWindow({
                 file: path.join('render', 'add.html'),
-                width: 400,
-                height: 400,
+                width: 500,
+                height: 600,
                 parent: window,
                 webPreferences: {
                     enableRemoteModule: true,
@@ -47,7 +47,6 @@ function main() {
                     addWindow?.webContents.send('sounds', sounds);
                 }).catch(console.error);
             });
-            // cleanup
             addWindow.on('closed', () => {
                 addWindow = null
             });
@@ -58,7 +57,7 @@ function main() {
         if (!button) {
             return;
         }
-        playSound(button.sound).then(console.log).catch(console.error);
+        playSound(button.sound,button.volume).then(console.log).catch(console.error);
     });
     ipcMain.on('stop', async () => {
         stopSound().then(console.log).catch(console.error);
@@ -74,7 +73,7 @@ function main() {
         try {
             await addNewSound(fileStream);
             const fileName: string = args.file.substring(args.file.lastIndexOf(path.sep) + 1);
-            addButton(args.index, fileName);
+            addButton(args.index, fileName,args.volume);
             addWindow?.close();
             window.show();
             window.webContents.send('settings', storage.getSettings());
@@ -83,7 +82,7 @@ function main() {
         }
     });
     ipcMain.on('existingSound', (event, args) => {
-        addButton(args.index, args.file);
+        addButton(args.index, args.file,args.volume);
         addWindow?.close();
         window.show();
         window.webContents.send('settings', storage.getSettings());
@@ -97,8 +96,14 @@ function main() {
     })
 }
 
-function addButton(index: number, sound: string) {
-    storage.addButton(new Button(index, sound));
+function addButton(index: number, sound: string,volume:string) {
+    let vol;
+    if(volume) {
+        try {
+            vol=parseFloat(volume);
+        }catch (ignored) {}
+    }
+    storage.addButton(new Button(index, sound,vol));
 }
 
 function getSounds(): Promise<Array<string>> {
@@ -183,7 +188,6 @@ function leaveServer(): Promise<void> {
 
 function stopSound(): Promise<void> {
     return new Promise<void>((res, rej) => {
-        process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = String(0);
         const options = getBasicOption('/stop');
         https.get(options, (response => {
             if (response.statusCode !== 200) {
@@ -200,11 +204,12 @@ function stopSound(): Promise<void> {
 
 function addNewSound(file: fs.ReadStream): Promise<void> {
     return new Promise<void>((res, rej) => {
-        process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = String(0);
-        const form = new FormData();
+        if (config.acceptSelfSignedCerts) {
+            process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = String(0);
+        }        const form = new FormData();
         const options = {
-            hostname: 'sound.threor.de',
-            port: 38117,
+            hostname: config.hostname,
+            port: config.port,
             path: `/upload`,
             method: 'POST',
             headers: form.getHeaders({'username': storage.getUsername()})
@@ -227,10 +232,13 @@ function addNewSound(file: fs.ReadStream): Promise<void> {
     });
 }
 
-function playSound(sound: string): Promise<boolean> {
+function playSound(sound: string, volume?:number): Promise<boolean> {
     return new Promise<boolean>((res, rej) => {
-        process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = String(0);
-        const options = getBasicOption(`/play?sound=${encodeURIComponent(sound)}`);
+        let url=`/play?sound=${encodeURIComponent(sound)}`;
+        if(volume) {
+            url+=`&volume=${encodeURIComponent(volume)}`;
+        }
+        const options = getBasicOption(url);
         https.get(options, (response => {
             if (response.statusCode !== 200) {
                 console.log(response);

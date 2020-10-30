@@ -1,6 +1,6 @@
 {
   "name": "soundbrett",
-  "version": "1.0.1",
+  "version": "1.0.3",
   "description": "Soundbrett Frounted",
   "main": "main.js",
   "scripts": {
@@ -9,7 +9,8 @@
     "start": "npm run compile && electron main.js",
     "pack": "electron-builder --dir",
     "dist": "electron-builder",
-    "postinstall": "electron-builder install-app-deps"
+    "postinstall": "electron-builder install-app-deps",
+    "release": "build"
   },
   "author": "threor",
   "license": "ISC",
@@ -28,6 +29,7 @@
     "productName": "Soundbrett",
 
     "win": {
+      "publish": "github",
       "target": [
         {
           "target": "nsis",
