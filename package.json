@@ -1,0 +1,42 @@
+{
+  "name": "soundbrett",
+  "version": "1.0.1",
+  "description": "Soundbrett Frounted",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "compile": "tsc && copyfiles -f src/index.html build",
+    "start": "npm run compile && electron main.js",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
+    "postinstall": "electron-builder install-app-deps"
+  },
+  "author": "threor",
+  "license": "ISC",
+  "dependencies": {
+    "asar": "^3.0.3",
+    "copyfiles": "^2.4.0",
+    "form-data": "^3.0.0",
+    "typescript": "^4.0.5",
+    "electron-store": "^6.0.1"
+  },
+  "devDependencies": {
+    "electron": "^10.1.5",
+    "electron-builder": "^22.9.1"
+  },
+  "build": {
+    "productName": "Soundbrett",
+
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64",
+            "ia32"
+          ]
+        }
+      ]
+    }
+  }
+}

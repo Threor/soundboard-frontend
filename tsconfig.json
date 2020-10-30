@@ -1,0 +1,21 @@
+{
+  "files": [
+    "storage.ts",
+    "window.ts",
+    "settings.ts",
+    "main.ts",
+    "button.ts",
+    "render/index.ts",
+    "render/add.ts"
+  ],
+  "compilerOptions": {
+    "target": "es6",
+    "module": "commonjs",
+    "strict": true,
+    "esModuleInterop": true
+    //"outDir": "./build"
+  },
+  "exclude": [
+    "node_modules"
+  ]
+}
