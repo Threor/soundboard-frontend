@@ -1,4 +1,4 @@
-import {app, ipcMain} from 'electron';
+import {app, ipcMain,dialog} from 'electron';
 import * as path from 'path';
 import {DataStorage} from "./storage";
 import {CustomWindow} from "./window";
@@ -7,6 +7,7 @@ import * as fs from "fs";
 import FormData from "form-data";
 import {Button} from "./button";
 import {Config} from "./config";
+import {autoUpdater} from "electron-updater";
 
 const storage = new DataStorage({
     configName: 'user-preferences',
@@ -14,7 +15,44 @@ const storage = new DataStorage({
 
 const config: Config = require("./config.json");
 
+app.on('ready',async ()=>{
+    console.log("Checking for updates");
+    await autoUpdater.checkForUpdates();
+    console.log("Checked");
+});
+autoUpdater.autoDownload=false;
+autoUpdater.on('update-not-available',(info)=>{
+    console.log(info);
+})
+autoUpdater.on('update-available',async (updateInfo)=>{
+    console.log("Update found");
+    let version=updateInfo.version;
+    let releaseDate=updateInfo.releaseDate;
+    const ret=await dialog.showMessageBox({
+        title:"Update gefunden",
+        type:"question",
+        buttons:["Update installieren","Update installieren und neustarten","Update installieren und beenden","Update nicht installieren"],
+        defaultId:1,
+        cancelId:3,
+        noLink:true,
+        message:`Ein neues Update mit der Version: ${version}, veröffentlicht am ${releaseDate} wurde gefunden.\nInstallieren?`
+
+    });
+    let reponse=ret.response;
+    if(reponse===3) {
+        return;
+    }
+    let shouldRestart=reponse===1;
+    await autoUpdater.downloadUpdate();
+    if(reponse!==0){
+        autoUpdater.quitAndInstall(true,shouldRestart);
+    }
+});
+autoUpdater.on('error',(error)=>{
+    console.error(error);
+});
 function main() {
+
     console.log('App is ready');
     let addWindow: CustomWindow | null;
     const window = new CustomWindow({
@@ -93,7 +131,7 @@ function main() {
     });
     ipcMain.on('addButton', (event, args) => {
         storage.addButton(args);
-    })
+    });
 }
 
 function addButton(index: number, sound: string,volume:string) {
