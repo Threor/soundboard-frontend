@@ -72,7 +72,7 @@ function main() {
             addWindow = new CustomWindow({
                 file: path.join('render', 'add.html'),
                 width: 500,
-                height: 600,
+                height: 650,
                 parent: window,
                 webPreferences: {
                     enableRemoteModule: true,
