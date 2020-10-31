@@ -10,7 +10,7 @@
     "pack": "electron-builder --dir",
     "dist": "electron-builder",
     "postinstall": "electron-builder install-app-deps",
-    "release": "build"
+    "release": "electron-builder build -w --publish always"
   },
   "author": "threor",
   "license": "ISC",
