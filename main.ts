@@ -1,4 +1,4 @@
-import {app, ipcMain,dialog} from 'electron';
+import {app, dialog, ipcMain} from 'electron';
 import * as path from 'path';
 import {DataStorage} from "./storage";
 import {CustomWindow} from "./window";
@@ -8,6 +8,7 @@ import FormData from "form-data";
 import {Button} from "./button";
 import {Config} from "./config";
 import {autoUpdater} from "electron-updater";
+import log from "electron-log";
 
 const storage = new DataStorage({
     configName: 'user-preferences',
@@ -15,45 +16,46 @@ const storage = new DataStorage({
 
 const config: Config = require("./config.json");
 
-app.on('ready',async ()=>{
-    console.log("Checking for updates");
+app.on('ready', async () => {
+    log.info("Checking for updates");
     await autoUpdater.checkForUpdates();
-    console.log("Checked");
+    log.info("Checked");
 });
-autoUpdater.autoDownload=false;
-autoUpdater.on('update-not-available',(info)=>{
-    console.log(info);
+autoUpdater.autoDownload = false;
+autoUpdater.logger = log;
+autoUpdater.on('update-not-available', (info) => {
+    log.info("No update available", info);
 })
-autoUpdater.on('update-available',async (updateInfo)=>{
-    console.log("Update found");
-    let version=updateInfo.version;
-    let releaseDate=updateInfo.releaseDate;
-    const ret=await dialog.showMessageBox({
-        title:"Update gefunden",
-        type:"question",
-        buttons:["Update installieren","Update installieren und neustarten","Update installieren und beenden","Update nicht installieren"],
-        defaultId:1,
-        cancelId:3,
-        noLink:true,
-        message:`Ein neues Update mit der Version: ${version}, veröffentlicht am ${releaseDate} wurde gefunden.\nInstallieren?`
+autoUpdater.on('update-available', async (updateInfo) => {
+    log.info("Update found");
+    let version = updateInfo.version;
+    let releaseDate = updateInfo.releaseDate;
+    const ret = await dialog.showMessageBox({
+        title: "Update gefunden",
+        type: "question",
+        buttons: ["Update installieren", "Update installieren und neustarten", "Update installieren und beenden", "Update nicht installieren"],
+        defaultId: 1,
+        cancelId: 3,
+        noLink: true,
+        message: `Ein neues Update mit der Version: ${version}, veröffentlicht am ${releaseDate} wurde gefunden.\nInstallieren?`
 
     });
-    let reponse=ret.response;
-    if(reponse===3) {
+    let reponse = ret.response;
+    if (reponse === 3) {
         return;
     }
-    let shouldRestart=reponse===1;
+    let shouldRestart = reponse === 1;
     await autoUpdater.downloadUpdate();
-    if(reponse!==0){
-        autoUpdater.quitAndInstall(true,shouldRestart);
+    if (reponse !== 0) {
+        autoUpdater.quitAndInstall(true, shouldRestart);
     }
 });
-autoUpdater.on('error',(error)=>{
-    console.error(error);
+autoUpdater.on('error', (error) => {
+    log.error("Error while checking for updates: ", error);
 });
-function main() {
 
-    console.log('App is ready');
+function main() {
+    log.info('App is ready');
     let addWindow: CustomWindow | null;
     const window = new CustomWindow({
         file: path.join("render", 'index.html'),
@@ -83,7 +85,7 @@ function main() {
                 addWindow?.webContents.send('index', data);
                 getSounds().then(sounds => {
                     addWindow?.webContents.send('sounds', sounds);
-                }).catch(console.error);
+                }).catch(log.error);
             });
             addWindow.on('closed', () => {
                 addWindow = null
@@ -95,32 +97,32 @@ function main() {
         if (!button) {
             return;
         }
-        playSound(button.sound,button.volume).then(console.log).catch(console.error);
+        playSound(button.sound, button.volume).catch(log.error);
     });
     ipcMain.on('stop', async () => {
-        stopSound().then(console.log).catch(console.error);
+        stopSound().catch(log.error);
     });
     ipcMain.on('join', async () => {
-        joinServer().then(console.log).catch(console.error);
+        joinServer().catch(log.error);
     });
     ipcMain.on('leave', async () => {
-        leaveServer().then(console.log).catch(console.error);
+        leaveServer().catch(log.error);
     });
     ipcMain.on('newSound', async (event, args) => {
         const fileStream = fs.createReadStream(args.file);
         try {
             await addNewSound(fileStream);
             const fileName: string = args.file.substring(args.file.lastIndexOf(path.sep) + 1);
-            addButton(args.index, fileName,args.volume);
+            addButton(args.index, fileName, args.volume);
             addWindow?.close();
             window.show();
             window.webContents.send('settings', storage.getSettings());
         } catch (e) {
-            console.error(e);
+            log.error(e);
         }
     });
     ipcMain.on('existingSound', (event, args) => {
-        addButton(args.index, args.file,args.volume);
+        addButton(args.index, args.file, args.volume);
         addWindow?.close();
         window.show();
         window.webContents.send('settings', storage.getSettings());
@@ -134,14 +136,15 @@ function main() {
     });
 }
 
-function addButton(index: number, sound: string,volume:string) {
+function addButton(index: number, sound: string, volume: string) {
     let vol;
-    if(volume) {
+    if (volume) {
         try {
-            vol=parseFloat(volume);
-        }catch (ignored) {}
+            vol = parseFloat(volume);
+        } catch (ignored) {
+        }
     }
-    storage.addButton(new Button(index, sound,vol));
+    storage.addButton(new Button(index, sound, vol));
 }
 
 function getSounds(): Promise<Array<string>> {
@@ -197,7 +200,7 @@ function joinServer(): Promise<void> {
         const options = getBasicOption('/join');
         https.get(options, (response => {
             if (response.statusCode !== 200) {
-                console.log(response);
+                log.warn(response);
                 rej(response.statusCode);
             } else {
                 res();
@@ -213,7 +216,7 @@ function leaveServer(): Promise<void> {
         const options = getBasicOption('/leave');
         https.get(options, (response => {
             if (response.statusCode !== 200) {
-                console.log(response);
+                log.warn(response);
                 rej(response.statusCode);
             } else {
                 res();
@@ -229,7 +232,7 @@ function stopSound(): Promise<void> {
         const options = getBasicOption('/stop');
         https.get(options, (response => {
             if (response.statusCode !== 200) {
-                console.log(response);
+                log.warn(response);
                 rej(response.statusCode);
             } else {
                 res();
@@ -244,7 +247,8 @@ function addNewSound(file: fs.ReadStream): Promise<void> {
     return new Promise<void>((res, rej) => {
         if (config.acceptSelfSignedCerts) {
             process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = String(0);
-        }        const form = new FormData();
+        }
+        const form = new FormData();
         const options = {
             hostname: config.hostname,
             port: config.port,
@@ -270,16 +274,16 @@ function addNewSound(file: fs.ReadStream): Promise<void> {
     });
 }
 
-function playSound(sound: string, volume?:number): Promise<boolean> {
+function playSound(sound: string, volume?: number): Promise<boolean> {
     return new Promise<boolean>((res, rej) => {
-        let url=`/play?sound=${encodeURIComponent(sound)}`;
-        if(volume) {
-            url+=`&volume=${encodeURIComponent(volume)}`;
+        let url = `/play?sound=${encodeURIComponent(sound)}`;
+        if (volume) {
+            url += `&volume=${encodeURIComponent(volume)}`;
         }
         const options = getBasicOption(url);
         https.get(options, (response => {
             if (response.statusCode !== 200) {
-                console.log(response);
+                log.warn(response);
                 rej(response.statusCode);
             } else {
                 res(true);
@@ -293,4 +297,3 @@ function playSound(sound: string, volume?:number): Promise<boolean> {
 
 app.on('ready', main);
 app.on('window-all-closed', app.quit);
-

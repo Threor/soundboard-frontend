@@ -37,8 +37,8 @@ export class DataStorage {
 
     addButton(button: Button): Settings {
         const settings = this.getSettings();
-        if(!settings.buttons) {
-            settings.buttons=[];
+        if (!settings.buttons) {
+            settings.buttons = [];
         }
         settings.buttons.push(button);
         return this.saveSettings(settings);
@@ -46,8 +46,8 @@ export class DataStorage {
 
     deleteButton(index: number): Settings {
         const settings = this.getSettings();
-        if(!settings.buttons) {
-            settings.buttons=[];
+        if (!settings.buttons) {
+            settings.buttons = [];
         }
         settings.buttons = settings.buttons.filter(b => b.index !== index);
         return this.saveSettings(settings);

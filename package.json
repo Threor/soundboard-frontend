@@ -1,6 +1,6 @@
 {
   "name": "soundbrett",
-  "version": "1.0.1",
+  "version": "1.0.3",
   "description": "Soundbrett Frounted",
   "main": "main.js",
   "scripts": {
@@ -17,6 +17,7 @@
   "dependencies": {
     "asar": "^3.0.3",
     "copyfiles": "^2.4.0",
+    "electron-log": "^4.2.4",
     "electron-store": "^6.0.1",
     "electron-updater": "^4.3.5",
     "form-data": "^3.0.0",
