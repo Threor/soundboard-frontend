@@ -1,4 +1,4 @@
-import {app, dialog, ipcMain} from 'electron';
+import {app, dialog, ipcMain, globalShortcut} from 'electron';
 import * as path from 'path';
 import {DataStorage} from "./storage";
 import {CustomWindow} from "./window";
@@ -17,43 +17,15 @@ const storage = new DataStorage({
 const config: Config = require("./config.json");
 
 app.on('ready', async () => {
+    storage.getButtons().forEach(button=>{
+       addShortcut(button);
+    });
     log.info("Checking for updates");
     await autoUpdater.checkForUpdates();
     log.info("Checked");
 });
-autoUpdater.autoDownload = false;
-autoUpdater.logger = log;
-autoUpdater.on('update-not-available', (info) => {
-    log.info("No update available", info);
-})
-autoUpdater.on('update-available', async (updateInfo) => {
-    log.info("Update found");
-    let version = updateInfo.version;
-    let releaseDate = updateInfo.releaseDate;
-    const ret = await dialog.showMessageBox({
-        title: "Update gefunden",
-        type: "question",
-        buttons: ["Update installieren", "Update installieren und neustarten", "Update installieren und beenden", "Update nicht installieren"],
-        defaultId: 1,
-        cancelId: 3,
-        noLink: true,
-        message: `Ein neues Update mit der Version: ${version}, veröffentlicht am ${releaseDate} wurde gefunden.\nInstallieren?`
 
-    });
-    let reponse = ret.response;
-    if (reponse === 3) {
-        return;
-    }
-    let shouldRestart = reponse === 1;
-    await autoUpdater.downloadUpdate();
-    if (reponse !== 0) {
-        autoUpdater.quitAndInstall(true, shouldRestart);
-    }
-});
-autoUpdater.on('error', (error) => {
-    log.error("Error while checking for updates: ", error);
-});
-
+setupAutoUpdate();
 function main() {
     log.info('App is ready');
     let addWindow: CustomWindow | null;
@@ -72,7 +44,7 @@ function main() {
             addWindow = new CustomWindow({
                 file: path.join('render', 'add.html'),
                 width: 500,
-                height: 650,
+                height: 700,
                 parent: window,
                 webPreferences: {
                     enableRemoteModule: true,
@@ -113,7 +85,7 @@ function main() {
         try {
             await addNewSound(fileStream);
             const fileName: string = args.file.substring(args.file.lastIndexOf(path.sep) + 1);
-            addButton(args.index, fileName, args.volume);
+            addButton(args.index, fileName, args.volume,args.shortcut);
             addWindow?.close();
             window.show();
             window.webContents.send('settings', storage.getSettings());
@@ -122,13 +94,13 @@ function main() {
         }
     });
     ipcMain.on('existingSound', (event, args) => {
-        addButton(args.index, args.file, args.volume);
+        addButton(args.index, args.file, args.volume,args.shortcut);
         addWindow?.close();
         window.show();
         window.webContents.send('settings', storage.getSettings());
     })
     ipcMain.on('deleteButton', (event, args) => {
-        storage.deleteButton(args);
+        deleteButton(args);
         window.webContents.send('settings', storage.getSettings());
     });
     ipcMain.on('addButton', (event, args) => {
@@ -136,7 +108,42 @@ function main() {
     });
 }
 
-function addButton(index: number, sound: string, volume: string) {
+function setupAutoUpdate() {
+    autoUpdater.autoDownload = false;
+    autoUpdater.logger = log;
+    autoUpdater.on('update-not-available', (info) => {
+        log.info("No update available", info);
+    })
+    autoUpdater.on('update-available', async (updateInfo) => {
+        log.info("Update found");
+        let version = updateInfo.version;
+        let releaseDate = updateInfo.releaseDate;
+        const ret = await dialog.showMessageBox({
+            title: "Update gefunden",
+            type: "question",
+            buttons: ["Update installieren", "Update installieren und neustarten", "Update installieren und beenden", "Update nicht installieren"],
+            defaultId: 1,
+            cancelId: 3,
+            noLink: true,
+            message: `Ein neues Update mit der Version: ${version}, veröffentlicht am ${releaseDate} wurde gefunden.\nInstallieren?`
+
+        });
+        let reponse = ret.response;
+        if (reponse === 3) {
+            return;
+        }
+        let shouldRestart = reponse === 1;
+        await autoUpdater.downloadUpdate();
+        if (reponse !== 0) {
+            autoUpdater.quitAndInstall(true, shouldRestart);
+        }
+    });
+    autoUpdater.on('error', (error) => {
+        log.error("Error while checking for updates: ", error);
+    });
+}
+
+function addButton(index: number, sound: string, volume: string, shortcut: string|undefined) {
     let vol;
     if (volume) {
         try {
@@ -144,7 +151,9 @@ function addButton(index: number, sound: string, volume: string) {
         } catch (ignored) {
         }
     }
-    storage.addButton(new Button(index, sound, vol));
+    const button=new Button(index, sound, vol,shortcut);
+    storage.addButton(button);
+    addShortcut(button);
 }
 
 function getSounds(): Promise<Array<string>> {
@@ -260,7 +269,7 @@ function addNewSound(file: fs.ReadStream): Promise<void> {
             if (response.statusCode !== 200) {
                 rej(response.statusCode);
             }
-            response.on('data', (d) => {
+            response.on('data', () => {
                 if (response.statusCode !== 200) {
                     rej(response.statusCode);
                 }
@@ -295,5 +304,28 @@ function playSound(sound: string, volume?: number): Promise<boolean> {
 
 }
 
+function addShortcut(button: Button) {
+    if(button.shortcut) {
+        let registerSuccess=globalShortcut.register(button.shortcut,()=>{
+            playSound(button.sound, button.volume).catch(log.error);
+        });
+        if(!registerSuccess) {
+            log.warn(`Couldn't register shortcut `+button.shortcut+" for button "+button.index);
+        }else {
+            log.debug("Added Shortcut "+button.shortcut);
+        }
+    }
+}
+
+function deleteButton(index:number) {
+    const button=storage.getButtonByIndex(index);
+    if(button?.shortcut) {
+        globalShortcut.unregister(button.shortcut);
+        log.debug("Unregistered "+button.shortcut);
+    }
+    storage.deleteButton(index);
+}
+
 app.on('ready', main);
 app.on('window-all-closed', app.quit);
+app.on('will-quit',globalShortcut.unregisterAll);
