@@ -50,7 +50,7 @@ document.getElementById('shortcut')?.addEventListener('click',()=>{
         (document.getElementById('shortcutValue')as HTMLSpanElement).innerText="Enter key";
     }
 })
-document.addEventListener('keypress',(event)=>{
+document.addEventListener('keydown',(event)=>{
     if(shortcutInput) {
         shortcutInput=false;
         shortcut=event.key;

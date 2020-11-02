@@ -153,7 +153,9 @@ function addButton(index: number, sound: string, volume: string, shortcut: strin
     }
     const button=new Button(index, sound, vol,shortcut);
     storage.addButton(button);
-    addShortcut(button);
+    if(button.shortcut&&!addShortcut(button)) {
+        dialog.showErrorBox("Shortcut nicht hinzugefügt","Der Shortcut "+button.shortcut+" konnte nicht registriert werden! Eventuell wird er nicht unterstützt");
+    }
 }
 
 function getSounds(): Promise<Array<string>> {
@@ -304,7 +306,7 @@ function playSound(sound: string, volume?: number): Promise<boolean> {
 
 }
 
-function addShortcut(button: Button) {
+function addShortcut(button: Button): boolean {
     if(button.shortcut) {
         let registerSuccess=globalShortcut.register(button.shortcut,()=>{
             playSound(button.sound, button.volume).catch(log.error);
@@ -314,7 +316,9 @@ function addShortcut(button: Button) {
         }else {
             log.debug("Added Shortcut "+button.shortcut);
         }
+        return registerSuccess;
     }
+    return false;
 }
 
 function deleteButton(index:number) {
