@@ -9,6 +9,7 @@ import {Button} from "./button";
 import {Config} from "./config";
 import {autoUpdater} from "electron-updater";
 import log from "electron-log";
+import {MenuShortcut, Settings} from "./settings";
 
 const storage = new DataStorage({
     configName: 'user-preferences',
@@ -18,7 +19,10 @@ const config: Config = require("./config.json");
 
 app.on('ready', async () => {
     storage.getButtons().forEach(button=>{
-       addShortcut(button);
+       addShortcutForButton(button);
+    });
+    storage.getMenuShortcuts().forEach(shortcut=>{
+        addShortcutForMenu(shortcut);
     });
     log.info("Checking for updates");
     await autoUpdater.checkForUpdates();
@@ -29,6 +33,7 @@ setupAutoUpdate();
 function main() {
     log.info('App is ready');
     let addWindow: CustomWindow | null;
+    let shortcutWindow: CustomWindow | null;
     const window = new CustomWindow({
         file: path.join("render", 'index.html'),
     });
@@ -39,6 +44,30 @@ function main() {
     ipcMain.on('usernameChanged', (event, args) => {
         window.webContents.send('settings', storage.changeUsername(args));
     });
+    ipcMain.on('showShortcutWindow',(event, args) => {
+        if (!shortcutWindow) {
+            shortcutWindow = new CustomWindow({
+                file: path.join('render', 'shortcut.html'),
+                width: 500,
+                height: 225,
+                parent: window,
+                webPreferences: {
+                    enableRemoteModule: true,
+                    nodeIntegration: true
+                }
+            });
+            shortcutWindow.setMenuBarVisibility(false);
+            shortcutWindow.once('show', () => {
+                shortcutWindow?.webContents.send('init', {
+                    action:args,
+                    shortcut: storage.getShortcutForAction(args)?.shortcut
+                });
+            });
+            shortcutWindow.on('closed', () => {
+                shortcutWindow = null
+            });
+        }
+    })
     ipcMain.on('showAddWindow', (event, data) => {
         if (!addWindow) {
             addWindow = new CustomWindow({
@@ -98,6 +127,18 @@ function main() {
         addWindow?.close();
         window.show();
         window.webContents.send('settings', storage.getSettings());
+    });
+    ipcMain.on('setShortcut',(event, args) => {
+        addMenuShortcut(args.action,args.shortcut);
+        shortcutWindow?.close();
+        window.show();
+        window.webContents.send('settings', storage.getSettings());
+    });
+    ipcMain.on('deleteShortcut',(event, args) => {
+        shortcutWindow?.close();
+        window.show();
+        window.webContents.send('settings', storage.getSettings());
+        deleteMenuShortcut(args);
     })
     ipcMain.on('deleteButton', (event, args) => {
         deleteButton(args);
@@ -153,9 +194,36 @@ function addButton(index: number, sound: string, volume: string, shortcut: strin
     }
     const button=new Button(index, sound, vol,shortcut);
     storage.addButton(button);
-    if(button.shortcut&&!addShortcut(button)) {
+    if(button.shortcut&&!addShortcutForButton(button)) {
         dialog.showErrorBox("Shortcut nicht hinzugefügt","Der Shortcut "+button.shortcut+" konnte nicht registriert werden! Eventuell wird er nicht unterstützt");
     }
+}
+
+function addMenuShortcut(action: string, shortcut: string) {
+    if(!action||!shortcut) {
+        return;
+    }
+    let oldShortcuts=storage.getMenuShortcuts();
+    const menuShortcut={
+        action:action,
+        shortcut:shortcut
+    }
+    storage.addMenuShortcut(menuShortcut);
+    if(storage.getMenuShortcuts().length!==(oldShortcuts.length+1)) {
+        oldShortcuts.forEach(shortcut=>unregisterShortcut(shortcut.shortcut));
+        storage.getMenuShortcuts().forEach(addShortcutForMenu);
+    }else {
+        addShortcutForMenu(menuShortcut);
+    }
+}
+
+function deleteMenuShortcut(action: string) {
+    let menuShortcut=storage.getShortcutForAction(action);
+    if(!menuShortcut) {
+        return;
+    }
+    unregisterShortcut(menuShortcut.shortcut);
+    storage.deleteMenuShortcut(action);
 }
 
 function getSounds(): Promise<Array<string>> {
@@ -306,25 +374,40 @@ function playSound(sound: string, volume?: number): Promise<boolean> {
 
 }
 
-function addShortcut(button: Button): boolean {
-    if(button.shortcut) {
-        let registerSuccess=globalShortcut.register(button.shortcut,()=>{
-            playSound(button.sound, button.volume).catch(log.error);
-        });
-        if(!registerSuccess) {
-            log.warn(`Couldn't register shortcut `+button.shortcut+" for button "+button.index);
-        }else {
-            log.debug("Added Shortcut "+button.shortcut);
-        }
-        return registerSuccess;
+function addShortcutForMenu(menuShortcut: MenuShortcut): boolean{
+    return addShortcut(menuShortcut.shortcut,`Action: ${menuShortcut.action}`,()=>{
+       switch (menuShortcut.action) {
+           case 'join': joinServer().catch(log.error);break
+           case 'stop': stopSound().catch(log.error);break;
+           case 'leave': leaveServer().catch(log.error);break;
+           default: log.warn(`Action ${menuShortcut.action} is not supported at this time!`);
+       }
+    });
+}
+
+function addShortcutForButton(button: Button): boolean {
+    return !!button.shortcut&&addShortcut(button.shortcut,`Button: ${button.index}`,()=> playSound(button.sound, button.volume).catch(log.error));
+}
+
+function addShortcut(shortcut: string, id: string, callback: ()=>void) {
+    let registerSuccess=globalShortcut.register(shortcut,callback);
+    if(!registerSuccess) {
+        log.warn(`Couldn't register shortcut `+shortcut+" for "+id);
+    }else {
+        log.debug("Added Shortcut "+shortcut);
     }
-    return false;
+    return registerSuccess;
+}
+
+function unregisterShortcut(shortcut: string) {
+    globalShortcut.unregister(shortcut);
+    log.debug("Unregistered Shortcut "+shortcut);
 }
 
 function deleteButton(index:number) {
     const button=storage.getButtonByIndex(index);
     if(button?.shortcut) {
-        globalShortcut.unregister(button.shortcut);
+        unregisterShortcut(button.shortcut);
         log.debug("Unregistered "+button.shortcut);
     }
     storage.deleteButton(index);

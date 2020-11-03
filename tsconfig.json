@@ -6,7 +6,9 @@
     "main.ts",
     "button.ts",
     "render/index.ts",
-    "render/add.ts"
+    "render/add.ts",
+    "render/shortcut-input.ts",
+    "render/shortcut.ts"
   ],
   "compilerOptions": {
     "target": "es6",

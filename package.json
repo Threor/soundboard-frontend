@@ -1,22 +1,24 @@
 {
   "name": "soundbrett",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Soundbrett Frounted",
   "main": "main.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "compile": "tsc && copyfiles -f src/index.html build",
+    "compile": "tsc",
     "start": "npm run compile && electron .",
     "pack": "electron-builder --dir",
     "dist": "electron-builder",
     "postinstall": "electron-builder install-app-deps",
-    "release": "electron-builder build -w --publish always"
+    "build": "electron-builder build -w",
+    "release": "npm run build --publish always"
   },
   "author": "threor",
+  "repository": "github:Threor/soundboard-frontend",
+  "bugs": "https://github.com/Threor/soundboard-frontend/issues",
   "license": "ISC",
   "dependencies": {
     "asar": "^3.0.3",
-    "copyfiles": "^2.4.0",
     "electron-log": "^4.3.0",
     "electron-store": "^6.0.1",
     "electron-updater": "^4.3.5",

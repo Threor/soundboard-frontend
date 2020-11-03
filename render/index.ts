@@ -46,3 +46,9 @@ document.querySelectorAll('.button-item').forEach(button => {
         ipcRenderer.send('deleteButton', parseInt(button.id));
     })
 });
+
+document.querySelectorAll('.menu-button').forEach(button => {
+    button.addEventListener('contextmenu', () => {
+        ipcRenderer.send('showShortcutWindow', button.id);
+    })
+})

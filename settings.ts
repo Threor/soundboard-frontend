@@ -1,6 +1,12 @@
 import {Button} from "./button";
 
 export interface Settings {
-    username: string
-    buttons: Array<Button>
+    username: string,
+    buttons: Array<Button>,
+    menuShortcuts: Array<MenuShortcut>
+}
+
+export interface MenuShortcut {
+    action: string;
+    shortcut: string;
 }

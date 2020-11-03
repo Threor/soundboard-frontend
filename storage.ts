@@ -1,4 +1,4 @@
-import {Settings} from "./settings";
+import {MenuShortcut, Settings} from "./settings";
 import {Button} from "./button";
 import * as electron from "electron";
 import * as path from "path";
@@ -47,6 +47,7 @@ export class DataStorage {
         const settings = this.getSettings();
         if (!settings.buttons) {
             settings.buttons = [];
+            return this.saveSettings(settings);
         }
         settings.buttons = settings.buttons.filter(b => b.index !== index);
         return this.saveSettings(settings);
@@ -58,6 +59,41 @@ export class DataStorage {
 
     getButtons(): Array<Button> {
         return this.getSettings().buttons;
+    }
+
+    getMenuShortcuts(): Array<MenuShortcut> {
+        let shortcuts=this.getSettings().menuShortcuts;
+        if(!shortcuts) {
+            this.getSettings().menuShortcuts=[];
+            return [];
+        }
+        return shortcuts;
+    }
+
+    getShortcutForAction(action: string): MenuShortcut | undefined {
+        return this.getMenuShortcuts().find(menuShortcut=>menuShortcut.action===action);
+    }
+
+    addMenuShortcut(menuShortcut: MenuShortcut): Settings {
+        let settings=this.getSettings();
+        if(!settings.menuShortcuts) {
+            settings.menuShortcuts=[];
+        }
+        if(this.getShortcutForAction(menuShortcut.action)) {
+            settings=this.deleteMenuShortcut(menuShortcut.action);
+        }
+        settings.menuShortcuts.push(menuShortcut);
+        return this.saveSettings(settings);
+    }
+
+    deleteMenuShortcut(action: string) : Settings {
+        const settings = this.getSettings();
+        if (!settings.menuShortcuts) {
+            settings.menuShortcuts = [];
+            return this.saveSettings(settings);
+        }
+        settings.menuShortcuts = settings.menuShortcuts.filter(shortcut => shortcut.action!==action);
+        return this.saveSettings(settings);
     }
 
     private get(key: string) {
