@@ -10,10 +10,12 @@ ipcRenderer.on('settings', (event, data) => {
             document.getElementById('username').value = settings.username;
         }
         if (settings.buttons) {
+            document.querySelectorAll('.button-item').forEach(button => {
+                (button as HTMLElement).innerText = "";
+            });
             settings.buttons.forEach(button => {
                 const htmlButton = document.getElementById(String(button.index));
-                // @ts-ignore
-                htmlButton.innerText = button.sound.substring(0, button.sound.lastIndexOf('.'));
+                (htmlButton as HTMLElement).innerText = button.sound.substring(0, button.sound.lastIndexOf('.'));
             })
         }
     }
@@ -42,8 +44,7 @@ document.querySelectorAll('.button-item').forEach(button => {
         }
     });
     button.addEventListener('contextmenu', () => {
-        (button as HTMLElement).innerText = "";
-        ipcRenderer.send('deleteButton', parseInt(button.id));
+        ipcRenderer.send('showAddWindow', parseInt(button.id));
     })
 });
 

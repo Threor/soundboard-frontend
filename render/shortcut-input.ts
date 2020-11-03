@@ -33,5 +33,28 @@ function getShortcut() {
     }
     ret += shortcut;
     return ret;
+}
 
+function markExistingShortcut(shortcut: string | undefined) {
+    if (!shortcut) {
+        return;
+    }
+    let fullShortcut: string = shortcut;
+    const ctrl = fullShortcut.includes("CommandOrControl+");
+    const alt = fullShortcut.includes("Alt+");
+    const shift = fullShortcut.includes("Shift+");
+    if (ctrl) {
+        fullShortcut = fullShortcut.replace("CommandOrControl+", "");
+    }
+    if (alt) {
+        fullShortcut = fullShortcut.replace("Alt+", "");
+    }
+    if (shift) {
+        fullShortcut = fullShortcut.replace("Shift+", "");
+    }
+    (document.getElementById('ctrl') as HTMLInputElement).checked = ctrl;
+    (document.getElementById('shift') as HTMLInputElement).checked = shift;
+    (document.getElementById('alt') as HTMLInputElement).checked = alt;
+    shortcut = fullShortcut;
+    (document.getElementById('shortcutValue') as HTMLSpanElement).innerText = shortcut;
 }

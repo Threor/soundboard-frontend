@@ -16,7 +16,7 @@
   "author": "threor",
   "repository": "github:Threor/soundboard-frontend",
   "bugs": "https://github.com/Threor/soundboard-frontend/issues",
-  "license": "ISC",
+  "license": "MIT",
   "dependencies": {
     "asar": "^3.0.3",
     "electron-log": "^4.3.0",
