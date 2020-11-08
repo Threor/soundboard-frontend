@@ -30,12 +30,13 @@ app.on('ready', async () => {
 });
 
 setupAutoUpdate();
+let window: CustomWindow;
 
 function main() {
     log.info('App is ready');
     let addWindow: CustomWindow | null;
     let shortcutWindow: CustomWindow | null;
-    const window = new CustomWindow({
+    window = new CustomWindow({
         file: path.join("render", 'index.html'),
     });
     window.once('show', () => {
@@ -153,6 +154,43 @@ function main() {
 function setupAutoUpdate() {
     autoUpdater.autoDownload = false;
     autoUpdater.logger = log;
+    let progressWindow: CustomWindow | null = null;
+    autoUpdater.on('download-progress', (info) => {
+        if (!progressWindow) {
+            progressWindow = new CustomWindow({
+                file: path.join('render', "progress.html"),
+                width: 600,
+                height: 125,
+                parent: window,
+            });
+            progressWindow.once('show', () => {
+                progressWindow?.webContents.send('progress', info);
+            });
+            progressWindow.on('closed', () => {
+                progressWindow = null
+            });
+        } else {
+            progressWindow?.webContents.send('progress', info);
+        }
+
+    });
+    autoUpdater.on('update-downloaded', async () => {
+        progressWindow?.close();
+        const ret = await dialog.showMessageBox({
+            title: "Update heruntergeladen",
+            type: "question",
+            buttons: ["Update installieren und neustarten", "Update installieren und beenden", "Update jetzt nicht installieren"],
+            defaultId: 0,
+            cancelId: 2,
+            noLink: true,
+            message: `Das Update wurde heruntergeladen. Update jetzt installieren?`
+        });
+        const response = ret.response;
+        if (response === 2) {
+            return;
+        }
+        autoUpdater.quitAndInstall(true, response === 0);
+    })
     autoUpdater.on('update-not-available', (info) => {
         log.info("No update available", info);
     })
@@ -163,22 +201,18 @@ function setupAutoUpdate() {
         const ret = await dialog.showMessageBox({
             title: "Update gefunden",
             type: "question",
-            buttons: ["Update installieren", "Update installieren und neustarten", "Update installieren und beenden", "Update nicht installieren"],
-            defaultId: 1,
-            cancelId: 3,
+            buttons: ["Update herunterladen", "Update nicht herunterladen"],
+            defaultId: 0,
+            cancelId: 1,
             noLink: true,
-            message: `Ein neues Update mit der Version: ${version}, veröffentlicht am ${releaseDate} wurde gefunden.\nInstallieren?`
+            message: `Ein neues Update mit der Version: ${version}, veröffentlicht am ${releaseDate} wurde gefunden.\nHerunterladen?`
 
         });
         let reponse = ret.response;
-        if (reponse === 3) {
+        if (reponse === 1) {
             return;
         }
-        let shouldRestart = reponse === 1;
         await autoUpdater.downloadUpdate();
-        if (reponse !== 0) {
-            autoUpdater.quitAndInstall(true, shouldRestart);
-        }
     });
     autoUpdater.on('error', (error) => {
         log.error("Error while checking for updates: ", error);

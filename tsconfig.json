@@ -8,7 +8,8 @@
     "render/index.ts",
     "render/add.ts",
     "render/shortcut-input.ts",
-    "render/shortcut.ts"
+    "render/shortcut.ts",
+    "render/progress.ts"
   ],
   "compilerOptions": {
     "target": "es6",

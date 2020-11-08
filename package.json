@@ -11,7 +11,7 @@
     "dist": "electron-builder",
     "postinstall": "electron-builder install-app-deps",
     "build": "electron-builder build -w",
-    "release": "npm run build --publish always"
+    "release": "electron-builder build -w --publish always"
   },
   "author": "threor",
   "repository": "github:Threor/soundboard-frontend",
