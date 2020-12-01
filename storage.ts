@@ -29,6 +29,18 @@ export class DataStorage {
         return this.saveSettings(settings);
     }
 
+    changeGuild(guild: string): Settings {
+        const settings = this.getSettings();
+        settings.guild = guild;
+        return this.saveSettings(settings);
+    }
+
+    changeServer(server: string): Settings {
+        const settings = this.getSettings();
+        settings.server = server;
+        return this.saveSettings(settings);
+    }
+
     saveSettings(settings: Settings): Settings {
         this.set('settings', settings)
         return this.getSettings();
@@ -62,37 +74,37 @@ export class DataStorage {
     }
 
     getMenuShortcuts(): Array<MenuShortcut> {
-        let shortcuts=this.getSettings().menuShortcuts;
-        if(!shortcuts) {
-            this.getSettings().menuShortcuts=[];
+        let shortcuts = this.getSettings().menuShortcuts;
+        if (!shortcuts) {
+            this.getSettings().menuShortcuts = [];
             return [];
         }
         return shortcuts;
     }
 
     getShortcutForAction(action: string): MenuShortcut | undefined {
-        return this.getMenuShortcuts().find(menuShortcut=>menuShortcut.action===action);
+        return this.getMenuShortcuts().find(menuShortcut => menuShortcut.action === action);
     }
 
     addMenuShortcut(menuShortcut: MenuShortcut): Settings {
-        let settings=this.getSettings();
-        if(!settings.menuShortcuts) {
-            settings.menuShortcuts=[];
+        let settings = this.getSettings();
+        if (!settings.menuShortcuts) {
+            settings.menuShortcuts = [];
         }
-        if(this.getShortcutForAction(menuShortcut.action)) {
-            settings=this.deleteMenuShortcut(menuShortcut.action);
+        if (this.getShortcutForAction(menuShortcut.action)) {
+            settings = this.deleteMenuShortcut(menuShortcut.action);
         }
         settings.menuShortcuts.push(menuShortcut);
         return this.saveSettings(settings);
     }
 
-    deleteMenuShortcut(action: string) : Settings {
+    deleteMenuShortcut(action: string): Settings {
         const settings = this.getSettings();
         if (!settings.menuShortcuts) {
             settings.menuShortcuts = [];
             return this.saveSettings(settings);
         }
-        settings.menuShortcuts = settings.menuShortcuts.filter(shortcut => shortcut.action!==action);
+        settings.menuShortcuts = settings.menuShortcuts.filter(shortcut => shortcut.action !== action);
         return this.saveSettings(settings);
     }
 
@@ -116,5 +128,13 @@ export class DataStorage {
 
     getUsername(): string {
         return this.getSettings().username;
+    }
+
+    getGuild(): string {
+        return this.getSettings().guild;
+    }
+
+    getServer(): string {
+        return this.getSettings().server;
     }
 }

@@ -36,6 +36,7 @@ function main() {
     log.info('App is ready');
     let addWindow: CustomWindow | null;
     let shortcutWindow: CustomWindow | null;
+    let settingsWindow: CustomWindow | null;
     window = new CustomWindow({
         file: path.join("render", 'index.html'),
     });
@@ -63,7 +64,23 @@ function main() {
                 shortcutWindow = null
             });
         }
-    })
+    });
+    ipcMain.on('showSettingsWindow', () => {
+        if (!settingsWindow) {
+            settingsWindow = new CustomWindow({
+                file: path.join('render', 'settings-menu.html'),
+                width: 500,
+                height: 350,
+                parent: window,
+            });
+            settingsWindow.once('show', () => {
+                settingsWindow?.webContents.send('init', storage.getSettings());
+            });
+            settingsWindow.on('closed', () => {
+                settingsWindow = null
+            });
+        }
+    });
     ipcMain.on('showAddWindow', (event, data) => {
         if (!addWindow) {
             let height = 700;
@@ -149,6 +166,20 @@ function main() {
     ipcMain.on('addButton', (event, args) => {
         storage.addButton(args);
     });
+    ipcMain.on('changeSettings', (event, args) => {
+        if (args.username) {
+            storage.changeUsername(args.username);
+        }
+        if (args.guild) {
+            storage.changeGuild(args.guild);
+        }
+        if (args.server) {
+            storage.changeServer(args.server);
+        }
+        settingsWindow?.close();
+        window.show();
+        window.webContents.send('settings', storage.getSettings());
+    })
 }
 
 function setupAutoUpdate() {
@@ -266,14 +297,17 @@ function getSounds(): Promise<Array<string>> {
         if (config.acceptSelfSignedCerts) {
             process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = String(0);
         }
+        const server = storage.getServer();
+        const url = new URL('/sound', server);
         const options = {
-            hostname: config.hostname,
-            port: config.port,
-            path: `/sound`,
+            hostname: url.hostname,
+            port: url.port,
+            path: url.pathname,
             method: 'GET',
             json: true,
             headers: {
-                'username': storage.getUsername()
+                'username': storage.getUsername(),
+                'guid': storage.getGuild()
             }
         }
         https.get(options, (response => {
@@ -298,13 +332,16 @@ function getBasicOption(path: string): https.RequestOptions {
     if (config.acceptSelfSignedCerts) {
         process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = String(0);
     }
+    const server = storage.getServer();
+    const url = new URL(path, server);
     return {
-        hostname: config.hostname,
-        port: config.port,
+        hostname: url.hostname,
+        port: url.port,
         path: path,
         method: 'GET',
         headers: {
-            'username': storage.getUsername()
+            'username': storage.getUsername(),
+            'guid': storage.getGuild()
         }
     }
 }
@@ -363,12 +400,16 @@ function addNewSound(file: fs.ReadStream): Promise<void> {
             process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = String(0);
         }
         const form = new FormData();
+        const server = storage.getServer();
+        const url = new URL('/upload', server);
         const options = {
-            hostname: config.hostname,
-            port: config.port,
-            path: `/upload`,
+            hostname: url.hostname,
+            port: url.port,
+            path: url.pathname,
             method: 'POST',
-            headers: form.getHeaders({'username': storage.getUsername()})
+            headers: form.getHeaders({
+                'username': storage.getUsername(), 'guid': storage.getGuild()
+            })
         }
         const request = https.request(options, (response => {
             if (response.statusCode !== 200) {

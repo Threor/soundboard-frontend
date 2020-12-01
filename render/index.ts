@@ -5,10 +5,6 @@ let settings: Settings;
 ipcRenderer.on('settings', (event, data) => {
     settings = data;
     if (settings) {
-        if (settings.username) {
-            // @ts-ignore
-            document.getElementById('username').value = settings.username;
-        }
         if (settings.buttons) {
             document.querySelectorAll('.button-item').forEach(button => {
                 (button as HTMLElement).innerText = "";
@@ -20,9 +16,8 @@ ipcRenderer.on('settings', (event, data) => {
         }
     }
 });
-document.getElementById('username')?.addEventListener('change', () => {
-    const username = (document.getElementById('username') as HTMLInputElement).value;
-    ipcRenderer.send('usernameChanged', username);
+document.getElementById('settings')?.addEventListener('click', () => {
+    ipcRenderer.send('showSettingsWindow');
 });
 document.getElementById('join')?.addEventListener('click', () => {
     ipcRenderer.send('join');
